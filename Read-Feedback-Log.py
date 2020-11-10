@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 """
-Parses the feedback logfiles created by a BBB Instance and make them humanly readable.
+Parses the feedback logfiles created by a BBB Instance and makes them humanly readable.
 To enable feedback logs: https://docs.bigbluebutton.org/2.2/customize.html#collect-feedback-from-the-users
 """
 
 __author__ = "Lukas Mahler"
 __version__ = "0.1.0"
-__date__ = "10.11.2020"
+__date__ = "09.11.2020"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -19,32 +19,18 @@ import shutil
 import argparse
 
 
-def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
+def parsefeedback(logspath, log2file=False, parsezip=False):
     myrating = 0
     numratings = 0
 
-    if not silent:
-        print("[x] Started parsing feedback logs\n")
+    print("Start parsing feedback logs...")
+    print("=" * 140)
 
     # Find all rotated logfiles
     logs = glob.glob(logspath + "html5-client.log*")
     writefile = logspath + "html5-client-readable.log"
 
-    if log2file:
-        openmode = 'w'
-    else:
-        openmode = 'a'
-
-    with open(writefile, openmode) as writefile:
-
-        txt = "Rating: | Author:                   | Comment:\n"
-        if log2file:
-            writefile.write(txt + "=" * 140)
-        if not silent:
-            print(txt + "=" * 140)
-
-        if log2file:
-            writefile.write(txt + "=" * 140)
+    with open(writefile, 'w') as writefile:
 
         for log in logs:
             unzipped = False
@@ -92,7 +78,7 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
                         c = ""
                         for i in range(len(comment)):
                             if (i + 1) % 100 == 0:
-                                c += "\n" + " " * 36 + "| "
+                                c += "\n" + " " * 37 + "| "
                             c += comment[i]
 
                     # Read out the given rating
@@ -103,13 +89,12 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
                         myrating = myrating + int(rating)
                         numratings += 1
 
-                    # Only print & write out lines with a comment
+                    # only print & write out lines with a comment
                     if "comment" in line:
-                        txt = "{0} Stars | {1:25s} | {2}\n".format(rating, name, c)
+                        txt = "{0} Sterne | {1:25s} | {2}\n".format(rating, name, c)
                         if log2file:
                             writefile.write(txt)
-                        if not silent:
-                            print(txt, end="")
+                        print(txt, end="")
 
             # Delete unzipped files
             if unzipped:
@@ -117,20 +102,16 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
 
         # No ratings were given yet
         try:
-            redurating = round(myrating / numratings, 2)
+            redurating = myrating / numratings
         except ZeroDivisionError:
             redurating = 0
 
         txt = "\nTotal Rating: {0} on {1} Votes".format(redurating, numratings)
         if log2file:
-            writefile.write("=" * 140 + txt)
+            writefile.write("=" * 70 + txt)
+            print("\nWrote to file: {0}".format(writefile.name))
 
-        if not silent:
-            print("=" * 140 + txt)
-            print("\n[x] Finished parsing feedback logs")
-
-            if log2file:
-                print("[x] Wrote to file: {0}".format(writefile.name))
+        print("=" * 140 + txt)
 
 
 if __name__ == "__main__":
@@ -138,14 +119,12 @@ if __name__ == "__main__":
     # Parse cmd parameter
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--path', default='/var/log/nginx/',
-                        help='Provide the full path to the directory containing the feedback logs')
-    parser.add_argument('-s', '--silent', action='store_true',
-                        help="If True the script won't have any output")
+                        help='provide the full path to the directory containing the feedback logs')
     parser.add_argument('-tf', '--tofile', action='store_true',
-                        help='If True write the output to `html5-client-readable.log`')
+                        help='write to a "-readable" logfile')
     parser.add_argument('-pz', '--parsezip', action='store_true',
-                        help='If True unzip .gz logs and parse them aswell')
+                        help='unzip .gz logfiles and parse them aswell')
     args = parser.parse_args()
 
     # Execute feedback parsing
-    parsefeedback(args.path, log2file=args.tofile, parsezip=args.parsezip, silent=args.silent)
+    parsefeedback(args.path, log2file=args.tofile, parsezip=args.parsezip)
