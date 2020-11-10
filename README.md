@@ -29,6 +29,6 @@ Execute `python3 ReadFeedback.py -pz -tf`
 
 This will parse all `html5-client.log` files in the directory `/var/log/nginx/`, even those who are already
 zipped (`-pz`) and print something like this:
-
+![Screenshot](https://user-images.githubusercontent.com/10271600/98667666-02b90300-234f-11eb-81f3-45ceedd7fe9f.png)
 It'll also write the printed info to the file
 `html5-client-readable.log` in the given path. (`-tf`)
