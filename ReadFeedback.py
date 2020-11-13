@@ -11,7 +11,6 @@ __date__ = "13.11.2020"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
-
 import os
 import glob
 import gzip
@@ -23,6 +22,8 @@ from datetime import datetime
 def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
     myrating = 0
     numratings = 0
+    lenprec = 60
+    lenc = 100
 
     if not silent:
         print("[x] Started parsing feedback logs\n")
@@ -40,9 +41,9 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
 
         txt = "{0:15s}| {1:8s}| {2:30s}| Comment:\n".format("Timestamp:", "Rating:", "Author:")
         if log2file:
-            writefile.write(txt + "=" * 120)
+            writefile.write(txt + "=" * (lenprec + lenc))
         if not silent:
-            print(txt + "=" * 120)
+            print(txt + "=" * (lenprec + lenc))
 
         if log2file:
             writefile.write(txt + "=" * 120)
@@ -85,7 +86,7 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
                         time = "".join(line[start + 1:start + 3])
                         timestamp = datetime.strptime(time, "%Y-%m-%dT%H%M").strftime("%d.%m.%y %H:%M")
 
-                    # Read the given rating
+                    # Read out the given rating
                     if "rating" in line:
                         start = line.index("rating")
                         rating = "".join(line[start + 1:start + 2])
@@ -93,7 +94,7 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
                         myrating = myrating + int(rating)
                         numratings += 1
 
-                    # Read the commenters name
+                    # Read out the commenters name
                     if "fullname" in line:
                         start = line.index("fullname")
                         name = "".join(line[start + 1:start + 3])
@@ -108,11 +109,11 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
 
                         c = ""
                         for i in range(len(comment)):
-                            if (i + 1) % 60 == 0:
-                                c += "\n" + " " * 57 + "| "
+                            if (i + 1) % lenc == 0:
+                                c += "\n" + " " * (lenprec - 3) + "| "
                             c += comment[i]
 
-                    # Print & write lines who contain a comment
+                    # Only print & write out lines with a comment
                     if "comment" in line:
                         txt = "{0:15}| {1:8}| {2:30s}| {3}\n".format(timestamp, rating + " Stars", name, c)
                         if log2file:
@@ -132,10 +133,10 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
 
         txt = "\nTotal Rating: {0} on {1} Votes".format(redurating, numratings)
         if log2file:
-            writefile.write("=" * 120 + txt)
+            writefile.write("=" * (lenprec + lenc))
 
         if not silent:
-            print("=" * 120 + txt)
+            print("=" * (lenprec + lenc) + txt)
             print("\n[x] Finished parsing feedback logs")
 
             if log2file:
@@ -143,7 +144,6 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
 
 
 if __name__ == "__main__":
-
     # Parse cmd parameter
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--path', default='/var/log/nginx/',
