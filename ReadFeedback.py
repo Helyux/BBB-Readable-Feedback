@@ -6,8 +6,8 @@ To enable feedback logs: https://docs.bigbluebutton.org/2.2/customize.html#colle
 """
 
 __author__ = "Lukas Mahler"
-__version__ = "0.1.0"
-__date__ = "10.11.2020"
+__version__ = "0.1.1"
+__date__ = "13.11.2020"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -17,6 +17,7 @@ import glob
 import gzip
 import shutil
 import argparse
+from datetime import datetime
 
 
 def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
@@ -37,14 +38,14 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
 
     with open(writefile, openmode) as writefile:
 
-        txt = "Rating: | Author:                   | Comment:\n"
+        txt = "{0:15s}| {1:8s}| {2:30s}| Comment:\n".format("Timestamp:", "Rating:", "Author:")
         if log2file:
-            writefile.write(txt + "=" * 140)
+            writefile.write(txt + "=" * 120)
         if not silent:
-            print(txt + "=" * 140)
+            print(txt + "=" * 120)
 
         if log2file:
-            writefile.write(txt + "=" * 140)
+            writefile.write(txt + "=" * 120)
 
         for log in logs:
             unzipped = False
@@ -78,24 +79,13 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
                     line = line.replace('"', '')
                     line = line.split(":")
 
-                    # Read out the commenters name
-                    if "fullname" in line:
-                        start = line.index("fullname")
-                        name = "".join(line[start + 1:start + 3])
+                    # Read the Timestamp
+                    if "time" in line:
+                        start = line.index("time")
+                        time = "".join(line[start + 1:start + 3])
+                        timestamp = datetime.strptime(time, "%Y-%m-%dT%H%M").strftime("%d.%m.%y %H:%M")
 
-                    # Split comment on 100 characters
-                    if "comment" in line:
-                        start = line.index("comment") + 1
-                        end = line.index("userRole")
-                        comment = "".join(line[start:end])
-
-                        c = ""
-                        for i in range(len(comment)):
-                            if (i + 1) % 100 == 0:
-                                c += "\n" + " " * 36 + "| "
-                            c += comment[i]
-
-                    # Read out the given rating
+                    # Read the given rating
                     if "rating" in line:
                         start = line.index("rating")
                         rating = "".join(line[start + 1:start + 2])
@@ -103,9 +93,28 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
                         myrating = myrating + int(rating)
                         numratings += 1
 
-                    # Only print & write out lines with a comment
+                    # Read the commenters name
+                    if "fullname" in line:
+                        start = line.index("fullname")
+                        name = "".join(line[start + 1:start + 3])
+                        if "confname" in name:
+                            name = name.replace("confname", " (temp)")
+
+                    # Split comment on 60 characters
                     if "comment" in line:
-                        txt = "{0} Stars | {1:25s} | {2}\n".format(rating, name, c)
+                        start = line.index("comment") + 1
+                        end = line.index("userRole")
+                        comment = "".join(line[start:end])
+
+                        c = ""
+                        for i in range(len(comment)):
+                            if (i + 1) % 60 == 0:
+                                c += "\n" + " " * 57 + "| "
+                            c += comment[i]
+
+                    # Print & write lines who contain a comment
+                    if "comment" in line:
+                        txt = "{0:15}| {1:8}| {2:30s}| {3}\n".format(timestamp, rating + " Stars", name, c)
                         if log2file:
                             writefile.write(txt)
                         if not silent:
@@ -123,10 +132,10 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
 
         txt = "\nTotal Rating: {0} on {1} Votes".format(redurating, numratings)
         if log2file:
-            writefile.write("=" * 140 + txt)
+            writefile.write("=" * 120 + txt)
 
         if not silent:
-            print("=" * 140 + txt)
+            print("=" * 120 + txt)
             print("\n[x] Finished parsing feedback logs")
 
             if log2file:
