@@ -32,6 +32,10 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
     logs = glob.glob(logspath + "html5-client.log*")
     writefile = logspath + "html5-client-readable.log"
 
+    # No html5-client.log found
+    if len(logs) == 0:
+        raise ValueError("[x] No logfiles found")
+
     if log2file:
         openmode = 'w'
     else:
@@ -46,7 +50,7 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
             print(txt + "=" * (lenprec + lenc))
 
         if log2file:
-            writefile.write(txt + "=" * 120)
+            writefile.write(txt + "=" * (lenprec + lenc))
 
         for log in logs:
             unzipped = False
@@ -80,13 +84,13 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
                     line = line.replace('"', '')
                     line = line.split(":")
 
-                    # Read the Timestamp
+                    # Read the timestamp
                     if "time" in line:
                         start = line.index("time")
                         time = "".join(line[start + 1:start + 3])
                         timestamp = datetime.strptime(time, "%Y-%m-%dT%H%M").strftime("%d.%m.%y %H:%M")
 
-                    # Read out the given rating
+                    # Read the given rating
                     if "rating" in line:
                         start = line.index("rating")
                         rating = "".join(line[start + 1:start + 2])
@@ -94,11 +98,13 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
                         myrating = myrating + int(rating)
                         numratings += 1
 
-                    # Read out the commenters name
+                    # Read the commenters name
                     if "fullname" in line:
                         start = line.index("fullname")
                         name = "".join(line[start + 1:start + 3])
                         if "confname" in name:
+                            # Not registered accounts will have "confname" in their name.
+                            # Replace these with (temp)
                             name = name.replace("confname", " (temp)")
 
                     # Split comment on 60 characters
@@ -113,7 +119,7 @@ def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
                                 c += "\n" + " " * (lenprec - 3) + "| "
                             c += comment[i]
 
-                    # Only print & write out lines with a comment
+                    # Print & write lines who contain a comment
                     if "comment" in line:
                         txt = "{0:15}| {1:8}| {2:30s}| {3}\n".format(timestamp, rating + " Stars", name, c)
                         if log2file:
