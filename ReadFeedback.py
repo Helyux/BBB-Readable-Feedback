@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 """
-Parses the feedback logfiles created by a BBB Instance and make them humanly readable.
+Parses the feedback logfiles created by a BBB Instance and makes them humanly readable.
 To enable feedback logs: https://docs.bigbluebutton.org/2.2/customize.html#collect-feedback-from-the-users
 """
 
 __author__ = "Lukas Mahler"
-__version__ = "0.1.1"
-__date__ = "13.11.2020"
+__version__ = "0.2.0"
+__date__ = "26.11.2020"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -19,137 +19,155 @@ import argparse
 from datetime import datetime
 
 
-def parsefeedback(logspath, log2file=False, parsezip=False, silent=False):
+def parsefeedback(logspath, parsezip=False):
+
+    data = []
+    count = 1
     myrating = 0
     numratings = 0
-    lenprec = 60
-    lenc = 100
 
     if not silent:
         print("[x] Started parsing feedback logs\n")
 
     # Find all rotated logfiles
     logs = glob.glob(logspath + "html5-client.log*")
-    writefile = logspath + "html5-client-readable.log"
 
     # No html5-client.log found
     if len(logs) == 0:
-        raise ValueError("[x] No logfiles found")
+        raise FileNotFoundError("[x] No logfiles found")
 
-    if log2file:
-        openmode = 'w'
-    else:
-        openmode = 'a'
+    for log in logs:
 
-    with open(writefile, openmode) as writefile:
-
-        txt = "{0:15s}| {1:8s}| {2:30s}| Comment:\n".format("Timestamp:", "Rating:", "Author:")
-        if log2file:
-            writefile.write(txt + "=" * (lenprec + lenc))
         if not silent:
-            print(txt + "=" * (lenprec + lenc))
+            print("({0}/{1}) parsed".format(count, len(logs)))
 
-        if log2file:
-            writefile.write(txt + "=" * (lenprec + lenc))
+        unzipped = False
+        if log.endswith(".gz"):
+            if parsezip:
+                with gzip.open(log, 'rb') as zipin:
+                    with open(log[:-3], 'wb') as zipout:
+                        shutil.copyfileobj(zipin, zipout)
+                        log = zipout.name
+                        unzipped = True
+            else:
+                continue
 
-        for log in logs:
-            unzipped = False
-            if log.endswith(".gz"):
-                if parsezip:
-                    with gzip.open(log, 'rb') as zipin:
-                        with open(log[:-3], 'wb') as zipout:
-                            shutil.copyfileobj(zipin, zipout)
-                            log = zipout.name
-                            unzipped = True
-                else:
+        with open(log, 'r') as readfile:
+            for line in readfile:
+                # Get good UTF-8 encoding
+                line = bytes(line, encoding='latin1').decode('unicode_escape')
+                line = bytes(line, encoding='latin1').decode('UTF-8')
+
+                # Skip empty lines
+                try:
+                    line = line.split(r" [")[2][:-2]
+                except IndexError:
                     continue
 
-            with open(log, 'r') as readfile:
-                for line in readfile:
-                    # Get good UTF-8 encoding
-                    line = bytes(line, encoding='latin1').decode('unicode_escape')
-                    line = bytes(line, encoding='latin1').decode('UTF-8')
+                # String formatting
+                line = line.replace(r"\n", " ")
+                line = line.replace("}", "")
+                line = line.replace("{", "")
+                line = line.replace(",", ":")
+                line = line.replace('"', '')
+                line = line.split(":")
 
-                    # Skip empty lines
-                    try:
-                        line = line.split(r" [")[2][:-2]
-                    except IndexError:
-                        continue
+                # Read the timestamp
+                if "time" in line:
+                    start = line.index("time")
+                    time = "".join(line[start + 1:start + 3])
+                    timestamp = datetime.strptime(time, "%Y-%m-%dT%H%M").strftime("%d.%m.%y %H:%M")
 
-                    # String formatting
-                    line = line.replace(r"\n", " ")
-                    line = line.replace("}", "")
-                    line = line.replace("{", "")
-                    line = line.replace(",", ":")
-                    line = line.replace('"', '')
-                    line = line.split(":")
+                # Read the given rating
+                if "rating" in line:
+                    start = line.index("rating")
+                    rating = "".join(line[start + 1:start + 2])
 
-                    # Read the timestamp
-                    if "time" in line:
-                        start = line.index("time")
-                        time = "".join(line[start + 1:start + 3])
-                        timestamp = datetime.strptime(time, "%Y-%m-%dT%H%M").strftime("%d.%m.%y %H:%M")
+                    myrating = myrating + int(rating)
+                    numratings += 1
 
-                    # Read the given rating
-                    if "rating" in line:
-                        start = line.index("rating")
-                        rating = "".join(line[start + 1:start + 2])
+                # Read the commenters name
+                if "fullname" in line:
+                    start = line.index("fullname")
+                    name = "".join(line[start + 1:start + 3])
+                    if "confname" in name:
+                        # Not registered accounts will have "confname" in their name.
+                        # Replace these with (temp)
+                        name = name.replace("confname", " (temp)")
 
-                        myrating = myrating + int(rating)
-                        numratings += 1
+                # Split comment every 60 characters
+                if "comment" in line:
+                    start = line.index("comment") + 1
+                    end = line.index("userRole")
+                    c = "".join(line[start:end])
 
-                    # Read the commenters name
-                    if "fullname" in line:
-                        start = line.index("fullname")
-                        name = "".join(line[start + 1:start + 3])
-                        if "confname" in name:
-                            # Not registered accounts will have "confname" in their name.
-                            # Replace these with (temp)
-                            name = name.replace("confname", " (temp)")
+                    comment = ""
+                    for i in range(len(c)):
+                        if (i + 1) % 100 == 0:
+                            comment += "\n" + " " * (60 - 3) + "| "
+                        comment += c[i]
 
-                    # Split comment on 60 characters
-                    if "comment" in line:
-                        start = line.index("comment") + 1
-                        end = line.index("userRole")
-                        comment = "".join(line[start:end])
+                # Add good comments to dict
+                if "comment" in line:
+                    data.append({
+                        'timestamp': timestamp,
+                        'rating': rating + " Stars",
+                        'name': name,
+                        'comment': comment
+                    })
 
-                        c = ""
-                        for i in range(len(comment)):
-                            if (i + 1) % lenc == 0:
-                                c += "\n" + " " * (lenprec - 3) + "| "
-                            c += comment[i]
+        # Delete unzipped files
+        if unzipped:
+            os.remove(log)
 
-                    # Print & write lines who contain a comment
-                    if "comment" in line:
-                        txt = "{0:15}| {1:8}| {2:30s}| {3}\n".format(timestamp, rating + " Stars", name, c)
-                        if log2file:
-                            writefile.write(txt)
-                        if not silent:
-                            print(txt, end="")
+        count += 1
 
-            # Delete unzipped files
-            if unzipped:
-                os.remove(log)
+    # Sort data by timestamp
+    sorted_data = sorted(data, key=lambda k: k['timestamp'])
 
-        # No ratings were given yet
-        try:
-            redurating = round(myrating / numratings, 2)
-        except ZeroDivisionError:
-            redurating = 0
+    # Calculate rating_data
+    if numratings == 0:
+        median = 0
+    else:
+        median = round(myrating/numratings, 2)
+    rating_data = {'num': numratings, 'median': median}
 
-        txt = "\nTotal Rating: {0} on {1} Votes".format(redurating, numratings)
-        if log2file:
-            writefile.write("=" * (lenprec + lenc))
+    if not silent:
+        print("\n[x] Finished parsing feedback logs")
 
-        if not silent:
-            print("=" * (lenprec + lenc) + txt)
-            print("\n[x] Finished parsing feedback logs")
-
-            if log2file:
-                print("[x] Wrote to file: {0}".format(writefile.name))
+    return sorted_data, rating_data
 
 
-if __name__ == "__main__":
+def print_parsed(data, rating):
+    print("\n{0:15s}| {1:8s}| {2:30s}| Comment:".format("Timestamp:", "Rating:", "Author:"))
+    print("=" * 160)
+    for entry in data:
+        print("{0:15}| {1:8}| {2:30s}| {3}".format(
+            entry['timestamp'], entry['rating'], entry['name'], entry['comment']
+        ))
+    print("=" * 160)
+    print("Median rating: {0} with {1} Votes".format(rating['median'], rating['num']))
+
+
+def write_parsed(logspath, data, rating):
+    writefile = logspath + "html5-client-readable.log"
+    with open(writefile, 'w') as file:
+        file.write("{0:15s}| {1:8s}| {2:30s}| Comment:\n".format("Timestamp:", "Rating:", "Author:"))
+        file.write(("=" * 160) + "\n")
+        for entry in data:
+            file.write("{0:15}| {1:8}| {2:30s}| {3}\n".format(
+                entry['timestamp'], entry['rating'], entry['name'], entry['comment']
+            ))
+        file.write(("=" * 160) + "\n")
+        file.write("Median rating: {0} with {1} Votes".format(rating['median'], rating['num']))
+
+    if not silent:
+        print("\n-> Wrote to file: {0}".format(os.path.basename(writefile)))
+
+
+# ======================================================================================================================
+
+def main():
     # Parse cmd parameter
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--path', default='/var/log/nginx/',
@@ -162,5 +180,17 @@ if __name__ == "__main__":
                         help='If True unzip .gz logs and parse them aswell')
     args = parser.parse_args()
 
+    global silent
+    silent = args.silent
+
     # Execute feedback parsing
-    parsefeedback(args.path, log2file=args.tofile, parsezip=args.parsezip, silent=args.silent)
+    data, rating = parsefeedback(args.path, parsezip=args.parsezip)
+    if not silent:
+        print_parsed(data, rating)
+    if args.tofile:
+        write_parsed(args.path, data, rating)
+
+
+if __name__ == "__main__":
+    global silent
+    main()
