@@ -6,8 +6,8 @@ To enable feedback logs: https://docs.bigbluebutton.org/2.2/customize.html#colle
 """
 
 __author__ = "Lukas Mahler"
-__version__ = "0.2.0"
-__date__ = "26.11.2020"
+__version__ = "0.2.1"
+__date__ = "02.12.2020"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -123,7 +123,7 @@ def parsefeedback(logspath, parsezip=False):
         count += 1
 
     # Sort data by timestamp
-    sorted_data = sorted(data, key=lambda k: k['timestamp'])
+    sorted_data = sorted(data, key=lambda k: datetime.strptime(k['timestamp'], "%d.%m.%y %H:%M"))
 
     # Calculate rating_data
     if numratings == 0:
