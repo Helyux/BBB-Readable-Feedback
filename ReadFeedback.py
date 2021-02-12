@@ -6,12 +6,13 @@ To enable feedback logs: https://docs.bigbluebutton.org/2.2/customize.html#colle
 """
 
 __author__ = "Lukas Mahler"
-__version__ = "0.2.1"
-__date__ = "02.12.2020"
+__version__ = "0.2.2"
+__date__ = "12.02.2020"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
 import os
+import csv
 import glob
 import gzip
 import shutil
@@ -19,7 +20,11 @@ import argparse
 from datetime import datetime
 
 
-def parsefeedback(logspath, parsezip=False):
+def parsefeedback(args):
+
+    logspath = args.path
+    parsezip = args.parsezip
+    silent = args.silent
 
     data = []
     count = 1
@@ -113,7 +118,8 @@ def parsefeedback(logspath, parsezip=False):
                         'timestamp': timestamp,
                         'rating': rating + " Stars",
                         'name': name,
-                        'comment': comment
+                        'comment': comment,
+                        'fullcmt': c
                     })
 
         # Delete unzipped files
@@ -149,17 +155,34 @@ def print_parsed(data, rating):
     print("Median rating: {0} with {1} Votes".format(rating['median'], rating['num']))
 
 
-def write_parsed(logspath, data, rating):
+def write_parsed(args, data, rating):
+    logspath = args.path
+    silent = args.silent
+
     writefile = logspath + "html5-client-readable.log"
-    with open(writefile, 'w') as file:
-        file.write("{0:15s}| {1:8s}| {2:30s}| Comment:\n".format("Timestamp:", "Rating:", "Author:"))
-        file.write(("=" * 160) + "\n")
+    with open(writefile, 'w') as f:
+        f.write("{0:15s}| {1:8s}| {2:30s}| Comment:\n".format("Timestamp:", "Rating:", "Author:"))
+        f.write(("=" * 160) + "\n")
         for entry in data:
-            file.write("{0:15}| {1:8}| {2:30s}| {3}\n".format(
+            f.write("{0:15}| {1:8}| {2:30s}| {3}\n".format(
                 entry['timestamp'], entry['rating'], entry['name'], entry['comment']
             ))
-        file.write(("=" * 160) + "\n")
-        file.write("Median rating: {0} with {1} Votes".format(rating['median'], rating['num']))
+        f.write(("=" * 160) + "\n")
+        f.write("Median rating: {0} with {1} Votes".format(rating['median'], rating['num']))
+
+    if not silent:
+        print("\n-> Wrote to file: {0}".format(os.path.basename(writefile)))
+
+
+def write_csv(args, data):
+    logspath = args.path
+    silent = args.silent
+
+    writefile = logspath + "BBB-Feedback.csv"
+    with open(writefile, 'w', newline='') as f:
+        write = csv.writer(f)
+        for entry in data:
+            write.writerow([entry['timestamp'], entry['rating'], entry['name'], entry['fullcmt']])
 
     if not silent:
         print("\n-> Wrote to file: {0}".format(os.path.basename(writefile)))
@@ -175,22 +198,24 @@ def main():
     parser.add_argument('-s', '--silent', action='store_true',
                         help="If True the script won't have any output")
     parser.add_argument('-tf', '--tofile', action='store_true',
-                        help='If True write the output to `html5-client-readable.log`')
+                        help='If True parse the output to `html5-client-readable.log`')
+    parser.add_argument('-csv', action='store_true',
+                        help='If True parse the output into `feedback.csv`')
     parser.add_argument('-pz', '--parsezip', action='store_true',
                         help='If True unzip .gz logs and parse them aswell')
     args = parser.parse_args()
 
-    global silent
     silent = args.silent
 
     # Execute feedback parsing
-    data, rating = parsefeedback(args.path, parsezip=args.parsezip)
+    data, rating = parsefeedback(args)
     if not silent:
         print_parsed(data, rating)
     if args.tofile:
-        write_parsed(args.path, data, rating)
+        write_parsed(args, data, rating)
+    if args.csv:
+        write_csv(args, data)
 
 
 if __name__ == "__main__":
-    global silent
     main()
