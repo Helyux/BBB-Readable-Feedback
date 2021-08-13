@@ -61,7 +61,6 @@ def parsefeedback(args):
             for line in readfile:
                 # Get good UTF-8 encoding
                 line = bytes(line, encoding='latin1').decode('unicode_escape')
-                line = bytes(line, encoding='latin1').decode('UTF-8')
 
                 # Skip empty lines
                 try:
@@ -95,6 +94,7 @@ def parsefeedback(args):
                 if "fullname" in line:
                     start = line.index("fullname")
                     name = "".join(line[start + 1:start + 3])
+                    name = bytes(name, encoding='latin1').decode('UTF-8')
                     if "confname" in name:
                         # Not registered accounts will have "confname" in their name.
                         # Replace these with (temp)
@@ -105,6 +105,7 @@ def parsefeedback(args):
                     start = line.index("comment") + 1
                     end = line.index("userRole")
                     c = "".join(line[start:end])
+                    c = bytes(c, encoding='latin1').decode('UTF-8')
 
                     comment = ""
                     for i in range(len(c)):
