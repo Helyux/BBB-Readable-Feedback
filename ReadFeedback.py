@@ -2,12 +2,12 @@
 
 """
 Parses the feedback logfiles created by a BBB Instance and makes them humanly readable.
-To enable feedback logs: https://docs.bigbluebutton.org/2.2/customize.html#collect-feedback-from-the-users
+To enable feedback logs: https://docs.bigbluebutton.org/admin/customize.html#collect-feedback-from-the-users
 """
 
 __author__ = "Lukas Mahler"
-__version__ = "0.2.2"
-__date__ = "12.02.2020"
+__version__ = "0.2.3"
+__date__ = "05.09.2021"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
