@@ -1,7 +1,7 @@
 # BBB-Readable-Feedback
 
 Did you activate the 
-[feedback feature](https://docs.bigbluebutton.org/2.2/customize.html#collect-feedback-from-the-users)
+[feedback feature](https://web.archive.org/web/20200927040534/https://docs.bigbluebutton.org/2.2/customize.html#collect-feedback-from-the-users)
 in BigBlueButton (BBB) but you can't read all the jibberish in the logfile? 
 This is for you.
 
