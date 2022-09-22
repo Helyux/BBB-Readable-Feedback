@@ -6,8 +6,8 @@ To enable feedback logs: https://docs.bigbluebutton.org/admin/customize.html#col
 """
 
 __author__ = "Lukas Mahler"
-__version__ = "0.2.3"
-__date__ = "05.09.2021"
+__version__ = "0.3.0"
+__date__ = "22.09.2022"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -17,6 +17,7 @@ import glob
 import gzip
 import shutil
 import argparse
+import textwrap
 from datetime import datetime
 
 
@@ -44,7 +45,7 @@ def parsefeedback(args):
     for log in logs:
 
         if not silent:
-            print("({0}/{1}) parsed".format(count, len(logs)))
+            print("[{0}/{1}] parsed".format(count, len(logs)))
 
         unzipped = False
         if log.endswith(".gz"):
@@ -93,25 +94,21 @@ def parsefeedback(args):
                 # Read the commenters name
                 if "fullname" in line:
                     start = line.index("fullname")
-                    name = "".join(line[start + 1:start + 3])
+                    name = ",".join(line[start + 1:start + 3])
                     name = bytes(name, encoding='latin1').decode('UTF-8')
                     if "confname" in name:
                         # Not registered accounts will have "confname" in their name.
                         # Replace these with (temp)
-                        name = name.replace("confname", " (temp)")
+                        name = name.replace(",confname", " (temp)")
 
-                # Split comment every 60 characters
+                # Split comment every 100 characters
                 if "comment" in line:
                     start = line.index("comment") + 1
                     end = line.index("userRole")
                     c = "".join(line[start:end])
                     c = bytes(c, encoding='latin1').decode('UTF-8')
 
-                    comment = ""
-                    for i in range(len(c)):
-                        if (i + 1) % 100 == 0:
-                            comment += "\n" + " " * (60 - 3) + "| "
-                        comment += c[i]
+                    comment = f"\n{57*' '}│ ".join(textwrap.wrap(c, 100))
 
                 # Add good comments to dict
                 if "comment" in line:
@@ -146,13 +143,13 @@ def parsefeedback(args):
 
 
 def print_parsed(data, rating):
-    print("\n{0:15s}| {1:8s}| {2:30s}| Comment:".format("Timestamp:", "Rating:", "Author:"))
-    print("=" * 160)
+    print("\n{0:15s}│ {1:8s}│ {2:30s}│ Comment:".format("Timestamp:", "Rating:", "Author:"))
+    print("─" * 160)
     for entry in data:
-        print("{0:15}| {1:8}| {2:30s}| {3}".format(
+        print("{0:15}│ {1:8}│ {2:30s}│ {3}".format(
             entry['timestamp'], entry['rating'], entry['name'], entry['comment']
         ))
-    print("=" * 160)
+    print("─" * 160)
     print("Median rating: {0} with {1} Votes".format(rating['median'], rating['num']))
 
 
