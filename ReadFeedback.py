@@ -6,7 +6,7 @@ To enable feedback logs: https://docs.bigbluebutton.org/admin/customize.html#col
 """
 
 __author__ = "Lukas Mahler"
-__version__ = "0.3.1"
+__version__ = "0.4.0"
 __date__ = "26.09.2022"
 __email__ = "m@hler.eu"
 __status__ = "Development"
@@ -100,14 +100,14 @@ def parsefeedback(args: Namespace) -> Tuple[List[Dict], Dict]:
                         # Replace these with (temp)
                         name = name.replace(",confname", " (temp)")
 
-                # Split comment every 100 characters
+                # Split comment every args.charlimit (default = 100) characters
                 if "comment" in line:
                     start = line.index("comment") + 1
                     end = line.index("userRole")
                     raw_comment = "".join(line[start:end])
                     raw_comment = bytes(raw_comment, encoding='latin1').decode('UTF-8')
 
-                    comment = f"\n{'':15s}│ {'':8s}│ {'':30s}│ ".join(textwrap.wrap(raw_comment, 100))
+                    comment = f"\n{'':15s}│ {'':8s}│ {'':30s}│ ".join(textwrap.wrap(raw_comment, args.charlimit))
 
                 # Add good comments to dict
                 if "comment" in line:
@@ -139,16 +139,16 @@ def parsefeedback(args: Namespace) -> Tuple[List[Dict], Dict]:
     return sorted_data, rating_data
 
 
-def print_parsed(data: List[Dict], rating: Dict) -> None:
+def print_parsed(args: Namespace, data: List[Dict], rating: Dict) -> None:
     print(f"\n{'Timestamp:':15s}│ {'Rating:':8s}│ {'Author:':30s}│ Comment:")
-    print(f"{15*'─'}┼{9*'─'}┼{31*'─'}┼{102*'─'}")
+    print(f"{15*'─'}┼{9*'─'}┼{31*'─'}┼{(args.charlimit + 2)*'─'}")
     lastline = len(data)-1
     for index, entry in enumerate(data):
         print(f"{entry['timestamp']:15}│ {entry['rating']:8}│ {entry['name']:30s}│ {entry['comment']}")
         if index != lastline:
-            print(f"{15 * '─'}┼{9 * '─'}┼{31 * '─'}┼{102 * '─'}")
+            print(f"{15*'─'}┼{9 *'─'}┼{31*'─'}┼{(args.charlimit + 2)*'─'}")
         else:
-            print(f"{15 * '─'}┴{9 * '─'}┴{31 * '─'}┴{102 * '─'}\n")
+            print(f"{15*'─'}┴{9*'─'}┴{31*'─'}┴{(args.charlimit + 2)*'─'}\n")
     print(f"Median rating: {rating['median']} with {rating['num']} Votes\n")
 
 
@@ -159,14 +159,14 @@ def write_parsed(args: Namespace, data: List[Dict], rating: Dict) -> None:
     writefile = logspath / "html5-client-readable.log"
     with open(writefile, 'w', encoding='UTF-8') as f:
         f.write(f"{'Timestamp:':15s}│ {'Rating:':8s}│ {'Author':30s}│ Comment:\n")
-        f.write(f"{15*'─'}┼{9*'─'}┼{31*'─'}┼{102*'─'}\n")
+        f.write(f"{15*'─'}┼{9*'─'}┼{31*'─'}┼{(args.charlimit + 2)*'─'}\n")
         lastline = len(data) - 1
         for index, entry in enumerate(data):
             f.write(f"{entry['timestamp']:15}│ {entry['rating']:8}│ {entry['name']:30s}│ {entry['comment']}\n")
             if index != lastline:
-                f.write(f"{15 * '─'}┼{9 * '─'}┼{31 * '─'}┼{102 * '─'}\n")
+                f.write(f"{15*'─'}┼{9*'─'}┼{31*'─'}┼{(args.charlimit + 2)*'─'}\n")
             else:
-                f.write(f"{15 * '─'}┴{9 * '─'}┴{31 * '─'}┴{102 * '─'}\n")
+                f.write(f"{15*'─'}┴{9*'─'}┴{31*'─'}┴{(args.charlimit + 2)*'─'}\n")
         f.write(f"Median rating: {rating['median']} with {rating['num']} Votes")
 
     if not silent:
@@ -197,6 +197,8 @@ def main():
                         help='Provide the full path to the directory containing the feedback logs')
     parser.add_argument('-s', '--silent', action='store_true',
                         help="If True the script won't have any output")
+    parser.add_argument('-cl', '--charlimit', default=100, type=int,
+                        help='The character length on which we wrap the comment')
     parser.add_argument('-tf', '--tofile', action='store_true',
                         help='If True parse the output to `html5-client-readable.log`')
     parser.add_argument('-csv', action='store_true',
@@ -210,7 +212,7 @@ def main():
     # Execute feedback parsing
     data, rating = parsefeedback(args)
     if not silent:
-        print_parsed(data, rating)
+        print_parsed(args, data, rating)
     if args.tofile:
         write_parsed(args, data, rating)
     if args.csv:
