@@ -195,10 +195,10 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('-p', '--path', default='/var/log/nginx/', type=Path,
                         help='Provide the full path to the directory containing the feedback logs')
-    parser.add_argument('-s', '--silent', action='store_true',
-                        help="If True the script won't have any output")
     parser.add_argument('-cl', '--charlimit', default=100, type=int,
                         help='The character length on which we wrap the comment')
+    parser.add_argument('-s', '--silent', action='store_true',
+                        help="If True the script won't have any output")
     parser.add_argument('-tf', '--tofile', action='store_true',
                         help='If True parse the output to `html5-client-readable.log`')
     parser.add_argument('-csv', action='store_true',
