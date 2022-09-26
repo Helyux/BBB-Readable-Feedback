@@ -148,7 +148,7 @@ def print_parsed(data: List[Dict], rating: Dict) -> None:
         if index != lastline:
             print(f"{15 * '─'}┼{9 * '─'}┼{31 * '─'}┼{102 * '─'}")
         else:
-            print("─" * 160)
+            print(f"{15 * '─'}┴{9 * '─'}┴{31 * '─'}┴{102 * '─'}\n")
     print(f"Median rating: {rating['median']} with {rating['num']} Votes\n")
 
 
