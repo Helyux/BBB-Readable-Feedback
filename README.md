@@ -29,7 +29,7 @@ It has 6 simple cmd parameters you **can** use, none of which is required:
 | -csv |  | False | If True write the output to `BBB-Feedback.csv` |
 
 
-## Installation:
+## Installation
 
 * Make sure you got atleast `Python 3.6` installed: `python3 -V`
 * Copy the script or clone this repo to the server containing the BBB instance:
@@ -40,9 +40,9 @@ It has 6 simple cmd parameters you **can** use, none of which is required:
 Execute `python3 ReadFeedback.py -pz -tf`
 
 This will parse all `html5-client.log` files in the directory `/var/log/nginx/`, even those who are already
-zipped (`-pz`) and print something like this:  
+zipped (`-pz`) and display something like this:
 ![Screenshot](https://user-images.githubusercontent.com/10271600/192272049-36805aa0-a2e1-4de7-8e0d-7c1edd5816e9.png)
-It'll also write the printed info to the file
+It'll also write the displayed info to the file
 `html5-client-readable.log` in the given path. (`-tf`)
 
 <!-- MARKDOWN LINKS & IMAGES -->
@@ -59,4 +59,4 @@ It'll also write the printed info to the file
 [license-url]: https://github.com/Helyux/BBB-Readable-Feedback/blob/master/LICENSE
 [xing-shield]: https://img.shields.io/static/v1?style=for-the-badge&message=Xing&color=006567&logo=Xing&logoColor=FFFFFF&label
 [xing-url]: https://www.xing.com/profile/Lukas_Mahler10
-[compatibility-shield]: https://img.shields.io/badge/compatibility-2.3%20%7C%202.4%20%7C%202.5-blue?style=for-the-badge
+[compatibility-shield]: https://img.shields.io/badge/bbb--compatibility-2.3%20%7C%202.4%20%7C%202.5-success?style=for-the-badge
