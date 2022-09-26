@@ -6,53 +6,53 @@ To enable feedback logs: https://docs.bigbluebutton.org/admin/customize.html#col
 """
 
 __author__ = "Lukas Mahler"
-__version__ = "0.2.3"
-__date__ = "05.09.2021"
+__version__ = "0.3.1"
+__date__ = "26.09.2022"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
-import os
 import csv
-import glob
 import gzip
 import shutil
-import argparse
+import textwrap
+from pathlib import Path
 from datetime import datetime
+from typing import Tuple, Dict, List
+from argparse import ArgumentParser, Namespace
 
 
-def parsefeedback(args):
+def parsefeedback(args: Namespace) -> Tuple[List[Dict], Dict]:
 
     logspath = args.path
     parsezip = args.parsezip
     silent = args.silent
 
     data = []
-    count = 1
     myrating = 0
     numratings = 0
 
     if not silent:
         print("[x] Started parsing feedback logs\n")
 
-    # Find all rotated logfiles
-    logs = glob.glob(logspath + "html5-client.log*")
+    # Find all (rotated) logfiles
+    logs = list(logspath.glob("html5-client.log*"))
 
     # No html5-client.log found
     if len(logs) == 0:
         raise FileNotFoundError("[x] No logfiles found")
 
-    for log in logs:
+    for index, log in enumerate(logs):
 
         if not silent:
-            print("({0}/{1}) parsed".format(count, len(logs)))
+            print(f"[{index+1}/{len(logs)}] parsed")
 
         unzipped = False
-        if log.endswith(".gz"):
+        if log.suffix == ".gz":
             if parsezip:
                 with gzip.open(log, 'rb') as zipin:
-                    with open(log[:-3], 'wb') as zipout:
+                    with open(log.with_suffix(''), 'wb') as zipout:
                         shutil.copyfileobj(zipin, zipout)
-                        log = zipout.name
+                        log = Path(zipout.name)
                         unzipped = True
             else:
                 continue
@@ -93,25 +93,21 @@ def parsefeedback(args):
                 # Read the commenters name
                 if "fullname" in line:
                     start = line.index("fullname")
-                    name = "".join(line[start + 1:start + 3])
+                    name = ",".join(line[start + 1:start + 3])
                     name = bytes(name, encoding='latin1').decode('UTF-8')
                     if "confname" in name:
-                        # Not registered accounts will have "confname" in their name.
+                        # Non registered accounts will have "confname" in their name.
                         # Replace these with (temp)
-                        name = name.replace("confname", " (temp)")
+                        name = name.replace(",confname", " (temp)")
 
-                # Split comment every 60 characters
+                # Split comment every 100 characters
                 if "comment" in line:
                     start = line.index("comment") + 1
                     end = line.index("userRole")
-                    c = "".join(line[start:end])
-                    c = bytes(c, encoding='latin1').decode('UTF-8')
+                    raw_comment = "".join(line[start:end])
+                    raw_comment = bytes(raw_comment, encoding='latin1').decode('UTF-8')
 
-                    comment = ""
-                    for i in range(len(c)):
-                        if (i + 1) % 100 == 0:
-                            comment += "\n" + " " * (60 - 3) + "| "
-                        comment += c[i]
+                    comment = f"\n{'':15s}│ {'':8s}│ {'':30s}│ ".join(textwrap.wrap(raw_comment, 100))
 
                 # Add good comments to dict
                 if "comment" in line:
@@ -120,14 +116,12 @@ def parsefeedback(args):
                         'rating': rating + " Stars",
                         'name': name,
                         'comment': comment,
-                        'fullcmt': c
+                        'raw_comment': raw_comment
                     })
 
         # Delete unzipped files
         if unzipped:
-            os.remove(log)
-
-        count += 1
+            log.unlink()
 
     # Sort data by timestamp
     sorted_data = sorted(data, key=lambda k: datetime.strptime(k['timestamp'], "%d.%m.%y %H:%M"))
@@ -145,56 +139,61 @@ def parsefeedback(args):
     return sorted_data, rating_data
 
 
-def print_parsed(data, rating):
-    print("\n{0:15s}| {1:8s}| {2:30s}| Comment:".format("Timestamp:", "Rating:", "Author:"))
-    print("=" * 160)
-    for entry in data:
-        print("{0:15}| {1:8}| {2:30s}| {3}".format(
-            entry['timestamp'], entry['rating'], entry['name'], entry['comment']
-        ))
-    print("=" * 160)
-    print("Median rating: {0} with {1} Votes".format(rating['median'], rating['num']))
+def print_parsed(data: List[Dict], rating: Dict) -> None:
+    print(f"\n{'Timestamp:':15s}│ {'Rating:':8s}│ {'Author:':30s}│ Comment:")
+    print(f"{15*'─'}┼{9*'─'}┼{31*'─'}┼{102*'─'}")
+    lastline = len(data)-1
+    for index, entry in enumerate(data):
+        print(f"{entry['timestamp']:15}│ {entry['rating']:8}│ {entry['name']:30s}│ {entry['comment']}")
+        if index != lastline:
+            print(f"{15 * '─'}┼{9 * '─'}┼{31 * '─'}┼{102 * '─'}")
+        else:
+            print("─" * 160)
+    print(f"Median rating: {rating['median']} with {rating['num']} Votes\n")
 
 
-def write_parsed(args, data, rating):
+def write_parsed(args: Namespace, data: List[Dict], rating: Dict) -> None:
     logspath = args.path
     silent = args.silent
 
-    writefile = logspath + "html5-client-readable.log"
-    with open(writefile, 'w') as f:
-        f.write("{0:15s}| {1:8s}| {2:30s}| Comment:\n".format("Timestamp:", "Rating:", "Author:"))
-        f.write(("=" * 160) + "\n")
-        for entry in data:
-            f.write("{0:15}| {1:8}| {2:30s}| {3}\n".format(
-                entry['timestamp'], entry['rating'], entry['name'], entry['comment']
-            ))
-        f.write(("=" * 160) + "\n")
-        f.write("Median rating: {0} with {1} Votes".format(rating['median'], rating['num']))
+    writefile = logspath / "html5-client-readable.log"
+    with open(writefile, 'w', encoding='UTF-8') as f:
+        f.write(f"{'Timestamp:':15s}│ {'Rating:':8s}│ {'Author':30s}│ Comment:\n")
+        f.write(f"{15*'─'}┼{9*'─'}┼{31*'─'}┼{102*'─'}\n")
+        lastline = len(data) - 1
+        for index, entry in enumerate(data):
+            f.write(f"{entry['timestamp']:15}│ {entry['rating']:8}│ {entry['name']:30s}│ {entry['comment']}\n")
+            if index != lastline:
+                f.write(f"{15 * '─'}┼{9 * '─'}┼{31 * '─'}┼{102 * '─'}\n")
+            else:
+                f.write(f"{15 * '─'}┴{9 * '─'}┴{31 * '─'}┴{102 * '─'}\n")
+        f.write(f"Median rating: {rating['median']} with {rating['num']} Votes")
 
     if not silent:
-        print("\n-> Wrote to file: {0}".format(os.path.basename(writefile)))
+        print(f"→ Wrote to file: {writefile.name}")
 
 
-def write_csv(args, data):
+def write_csv(args: Namespace, data: List[Dict]) -> None:
     logspath = args.path
     silent = args.silent
 
-    writefile = logspath + "BBB-Feedback.csv"
-    with open(writefile, 'w', newline='') as f:
+    writefile = logspath / "BBB-Feedback.csv"
+    with open(writefile, 'w', encoding='UTF-8', newline='') as f:
         write = csv.writer(f)
         for entry in data:
-            write.writerow([entry['timestamp'], entry['rating'], entry['name'], entry['fullcmt']])
+            write.writerow([entry['timestamp'], entry['rating'], entry['name'], entry['raw_comment']])
 
     if not silent:
-        print("\n-> Wrote to file: {0}".format(os.path.basename(writefile)))
+        print(f"→ Wrote to file: {writefile.name}")
 
 
 # ======================================================================================================================
 
 def main():
+
     # Parse cmd parameter
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--path', default='/var/log/nginx/',
+    parser = ArgumentParser()
+    parser.add_argument('-p', '--path', default='/var/log/nginx/', type=Path,
                         help='Provide the full path to the directory containing the feedback logs')
     parser.add_argument('-s', '--silent', action='store_true',
                         help="If True the script won't have any output")
